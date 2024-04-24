@@ -1,4 +1,5 @@
 from utils import pretty_print_timetable
+from utils import parse_interval
 from state import State
 
 ##################### MACROURI #####################
@@ -112,8 +113,36 @@ class State:
         '''
         Calculează numărul de conflicte din această stare.
         '''
+        constrangeri = 0
+        for prof in profesori:
+            for const in profesori[prof]:
+                if const[0] != '!':
+                    continue
 
-        return 0
+                const = const[1:]
+
+                # Verifică constrângerile de zile
+                if const in orar:
+                    zi = const
+
+                    if zi in profesori[prof][SLOTURI]:
+                        constrangeri += len(profesori[prof][SLOTURI][zi])
+
+                # Verifică constrângerile de intervale
+                else:
+                    interval = parse_interval(const)
+                    start, end = interval
+
+                    if start != end - 2:
+                        intervals = [(i, i + 2) for i in range(start, end, 2)]
+                    else:
+                        intervals = [(start, end)]
+
+                    for interval in intervals:
+                        for zi in profesori[prof][SLOTURI]:
+                            if interval in zi:
+                                constrangeri += 1
+        return constrangeri
     
     def conflicts(self) -> int:
         '''
