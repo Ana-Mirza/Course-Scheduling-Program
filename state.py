@@ -1,18 +1,21 @@
 from utils import pretty_print_timetable
-from utils import parse_interval
-from state import State
+from check_constraints import parse_interval
+from ast import literal_eval
+from copy import deepcopy
 
 ##################### MACROURI #####################
 SLOTURI = 'Sloturi'
 MATERII = 'Materii'
 CAPACITATE = 'Capacitate'
 INTERVALE = 'Intervale'
+CONSTRANGERI ='Constrangeri'
 
 class State:
     def __init__(
             self,
+            filename: str,
             materii: dict[str, int],
-            profesori: dict[str, dict[str, list[str]]],
+            profesori: dict[str, dict[str, int | list[str] | list[tuple[int, int]]]],
             sali: dict[str, dict[str, list[str] | int]],
             orar: dict[str, dict[tuple[int, int], dict[str, tuple[str, str]]]] | None = None, 
             conflicte: int | None = None,
@@ -25,6 +28,7 @@ class State:
         self.materii_ramase = materii
         self.profesori = profesori
         self.sali = sali
+        self.filename = filename
 
         # Crează listă de sloturi ocupate pentru fiecare profesor
         for profesor in self.profesori:
@@ -37,7 +41,7 @@ class State:
     @staticmethod
     def generate_orar(zile: list[str],
                     intervale: list[tuple[int, int]],
-                    sali: dict[str, dict[str, str | int]]) -> dict[str, dict[(int, int), dict[str, (str, str)]]]:
+                    sali: dict[str, dict[str, str | int]]) -> dict[str, dict[tuple[int, int], dict[str, tuple[str, str]]]]:
         '''
         Construiește un orar inițial gol.
         '''
@@ -46,19 +50,21 @@ class State:
         for zi in zile:
             orar[zi] = {}
             for interval in intervale:
+                interval = literal_eval(interval)
                 orar[zi][interval] = {}
                 for sala in sali:
-                    orar[zi][interval][sala] = ('', '')
+                    orar[zi][interval][sala] = None
 
         return orar
     
     def is_final(self) -> bool:
         """
         Întoarce True dacă este stare finală.
+        Starea este finală când am asignat slot pentru fiecare materie.
         """
         return len(self.materii_ramase) == 0
     
-    def get_next_states(self) -> list[State]:
+    def get_next_states(self):
         '''
         Întoarce toate posibilele stări următoare.
         '''
@@ -67,7 +73,7 @@ class State:
         for zi in self.orar:
             for interval in self.orar[zi]:
                 for sala in self.orar[zi][interval]:
-                    if self.orar[zi][interval][sala] == ('', ''):
+                    if not self.orar[zi][interval][sala]:
                         for materie in self.materii_ramase:
                             # Verifică dacă materia poate fi ținută în sala respectivă
                             if materie not in self.sali[sala][MATERII]:
@@ -79,7 +85,7 @@ class State:
                                     continue
 
                                 # Verifică dacă profesorul mai poate preda
-                                if len(self.profesori[profesor][INTERVALE]) == 7:
+                                if self.profesori[profesor][INTERVALE] == 7:
                                     continue
                                 # Verifică dacă profesorul are slotul liber
                                 if zi in self.profesori[profesor][SLOTURI] and interval in self.profesori[profesor][SLOTURI][zi]:
@@ -87,16 +93,16 @@ class State:
 
                                 # Crează stare vecină noua
                                 next_state = self.clone()
-                                next_state.orar[zi][interval][sala] = (materie, profesor)
-
-                                # Calculează numărul de conflite soft încălcate
-                                next_state.conflicte = State.__compute_conflicts(next_state.orar, next_state.profesori)
+                                next_state.orar[zi][interval][sala] = (profesor, materie)
 
                                 # Updatează orarul profesorului
-                                self.profesori[profesor][INTERVALE] += 1
-                                if zi not in self.profesori[profesor][SLOTURI]:
-                                    self.profesori[profesor][SLOTURI][zi] = []
-                                self.profesori[profesor][SLOTURI][zi].append(interval)
+                                next_state.profesori[profesor][INTERVALE] += 1
+                                if zi not in next_state.profesori[profesor][SLOTURI]:
+                                    next_state.profesori[profesor][SLOTURI][zi] = []
+                                next_state.profesori[profesor][SLOTURI][zi].append(interval)
+
+                                # Calculează numărul de conflite soft încălcate
+                                next_state.conflicte = State.__compute_conflicts(orar=next_state.orar, profesori=next_state.profesori)
 
                                 # Updatează numărul de stundeți rămași cu materia respectivă
                                 next_state.materii_ramase[materie] -= self.sali[sala][CAPACITATE]
@@ -109,13 +115,13 @@ class State:
     
     @staticmethod
     def __compute_conflicts(orar: dict[str, dict[tuple[int, int], dict[str, tuple[str, str]]]],
-                             profesori: dict[str, dict[str, list[str]]]) -> int:
+                             profesori: dict[str, dict[str, int | list[str] | list[tuple[int, int]]]]) -> int:
         '''
         Calculează numărul de conflicte din această stare.
         '''
         constrangeri = 0
         for prof in profesori:
-            for const in profesori[prof]:
+            for const in profesori[prof][CONSTRANGERI]:
                 if const[0] != '!':
                     continue
 
@@ -140,7 +146,7 @@ class State:
 
                     for interval in intervals:
                         for zi in profesori[prof][SLOTURI]:
-                            if interval in zi:
+                            if interval in profesori[prof][SLOTURI][zi]:
                                 constrangeri += 1
         return constrangeri
     
@@ -150,21 +156,24 @@ class State:
         '''
         return self.conflicte
     
+    def score(self) -> int:
+        '''
+        Întoarce numărul de studenți rămași neasignați.
+        '''
+        scor = 0
+        for materie in self.materii_ramase:
+            scor += self.materii_ramase[materie]
+
+        return scor
+    
     def display(self) -> None:
         '''
         Afișează orarul.
         '''
-        pretty_print_timetable(self.orar)
+        print(pretty_print_timetable(self.orar, self.filename))
 
-    def clone(self) -> State:
+    def clone(self):
         '''
         Clonează starea curentă.
         '''
-        
-        return State(
-            self.orar,
-            self.conflicte,
-            self.materii_ramase.copy(),
-            self.profesori.copy(),
-            self.sali.copy()
-        )
+        return deepcopy(self)
