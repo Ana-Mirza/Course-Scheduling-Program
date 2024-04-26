@@ -12,6 +12,7 @@ def stochastic_hill_climbing(initial: State, max_iters: int = 1000) -> tuple[boo
     
     while iters < max_iters:
         iters += 1
+        print(" iter - ", iters)
         
         # Alegem aleator între vecinii mai buni decât starea curentă.
         successors = state.get_next_states()
@@ -33,28 +34,32 @@ def stochastic_hill_climbing(initial: State, max_iters: int = 1000) -> tuple[boo
 
 def random_restart_hill_climbing(
     initial: State,
-    max_restarts: int = 100, 
+    max_restarts: int = 30, 
     run_max_iters: int = 100, 
 ) -> Result:
     
     total_iters, total_states = 0, 0
     
-    # TODO 4. Realizăm maximum max_restarts căutări de tip Hill Climbing, din stări aleatoare.
-    # Prima dată pornim din starea initial. Pentru stările aleatoare noi, aveți dimensiunea 
-    # stării initial în initial.size, și folosiți un seed random
-    # Strângem în total_iters și total_states numărul de iterații și stări întors de HC.
+    # Realizăm maximum max_restarts căutări de tip Hill Climbing.
     state = initial.clone()
+    end_state = state
     restarts = 0
     
     while restarts < max_restarts:
         restarts += 1
+        print("restarts - ", restarts)
 
-        is_final, final_state = stochastic_hill_climbing(state)
+        is_final, final_state = stochastic_hill_climbing(state, max_iters=run_max_iters)
 
         if is_final and final_state.conflicts() == 0:
             return is_final, total_iters, total_states, final_state
         
-    return state.is_final(), total_iters, total_states, state
+        print("conflicts - ", final_state.conflicts())
+        if (final_state.conflicts() <= end_state.conflicts() or end_state == state) and is_final:
+            print("da")
+            end_state = final_state
+        
+    return end_state.is_final(), total_iters, total_states, end_state
 
 
 def hill_climbing(initial: State, max_iters: int = 1000) -> Result:
@@ -102,8 +107,8 @@ def hill_climbing_algorithm_function(filename: str, timetable_specs: dict):
                        intervale=timetable_specs[utils.INTERVALE])
     
     # Sortează materiile după numărul de profesori și numărul de studenți asignați
-    state_init.materii_ramase = dict(sorted(state_init.materii_ramase.items(),
-                                             key=lambda x: (profi_materie(x[0], timetable_specs[utils.PROFESORI]), x[0])))
+    # state_init.materii_ramase = dict(sorted(state_init.materii_ramase.items(),
+    #                                          key=lambda x: (profi_materie(x[0], timetable_specs[utils.PROFESORI]), x[0])))
         
     # Aplică algoritmul Hill Climbing
     # result = hill_climbing(state_init)
