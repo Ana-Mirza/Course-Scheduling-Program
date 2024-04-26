@@ -69,6 +69,7 @@ class State:
         Întoarce toate posibilele stări următoare.
         '''
         next_states = []
+        next_actions = []
         # parcurge toate intervalele orare goale și încearcă să le umple cu materiile rămase
         for zi in self.orar:
             for interval in self.orar[zi]:
@@ -91,6 +92,7 @@ class State:
                                 if zi in self.profesori[profesor][SLOTURI] and interval in self.profesori[profesor][SLOTURI][zi]:
                                     continue
 
+                                #####################################
                                 # Crează stare vecină noua
                                 next_state = self.clone()
                                 next_state.orar[zi][interval][sala] = (profesor, materie)
@@ -110,8 +112,80 @@ class State:
                                 # Elimină materia din lista celor rămase dacă a fost acoperită în totalitate
                                 if next_state.materii_ramase[materie] <= 0:
                                     next_state.materii_ramase.pop(materie)
-                                next_states.append(next_state)
-        return next_states
+                                #####################################
+                                
+                                # Adaugă starea vecină în lista de stări următoare
+                                # next_states.append(next_state)
+
+                                # Crează listă de acțiuni posibile
+                                action = (zi, interval, sala, profesor, materie)
+                                action_conflicts = State.__compute_conflicts2(action, self.profesori[profesor][CONSTRANGERI])
+                                
+                                next_actions.append((action, action_conflicts))
+        # return next_states
+        return next_actions
+    
+    def apply_action(self, action: tuple[str, str, str, str, str], conflicts: int):
+        '''
+        Aplică o acțiune asupra stării curente.
+        '''
+        zi, interval, sala, profesor, materie = action
+
+        # Updatează orarul
+        self.orar[zi][interval][sala] = (profesor, materie)
+
+        # Updatează orarul profesorului
+        self.profesori[profesor][INTERVALE] += 1
+        if zi not in self.profesori[profesor][SLOTURI]:
+            self.profesori[profesor][SLOTURI][zi] = []
+        self.profesori[profesor][SLOTURI][zi].append(interval)
+
+        # Calculează numărul de conflite soft încălcate
+        self.conflicte += conflicts
+
+        # Updatează numărul de stundeți rămași cu materia respectivă
+        self.materii_ramase[materie] -= self.sali[sala][CAPACITATE]
+
+        # Elimină materia din lista celor rămase dacă a fost acoperită în totalitate
+        if self.materii_ramase[materie] <= 0:
+            self.materii_ramase.pop(materie)
+    
+    @staticmethod
+    def __compute_conflicts2(action: tuple[str, str, str, str, str], 
+                             constrangeri_prof: dict[str, str]) -> int:
+        """
+        Calculează numărul de conflicte cauzate de această acțiune.
+        """
+
+        zi, interv, _, _, _ = action
+        constrangeri = 0
+
+        for const in constrangeri_prof:
+            if const[0] != '!':
+                continue
+
+            const = const[1:]
+
+            # Verifică constrângerile de zile
+            if const in ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri']:
+                if const == zi:
+                    constrangeri += 1
+
+            # Verifică constrângerile de intervale
+            else:
+                interval = parse_interval(const)
+                start, end = interval
+
+                if start != end - 2:
+                    intervals = [(i, i + 2) for i in range(start, end, 2)]
+                else:
+                    intervals = [(start, end)]
+
+                for interval in intervals:
+                    if interv == interval:
+                        constrangeri += 1
+                        
+        return constrangeri
     
     @staticmethod
     def __compute_conflicts(orar: dict[str, dict[tuple[int, int], dict[str, tuple[str, str]]]],

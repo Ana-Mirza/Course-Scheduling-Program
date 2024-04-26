@@ -1,9 +1,61 @@
 import utils
+import random
 from state import State
 from utils import pretty_print_timetable
 from check_constraints import check_mandatory_constraints
 
 Result = tuple[bool, int, int, State]
+
+def stochastic_hill_climbing(initial: State, max_iters: int = 1000) -> tuple[bool, State]:
+    iters, states = 0, 0
+    state = initial.clone()
+    
+    while iters < max_iters:
+        iters += 1
+        
+        # Alegem aleator între vecinii mai buni decât starea curentă.
+        successors = state.get_next_states()
+        states += len(successors)
+
+        if len(successors) == 0:
+            break
+        
+        min_conflict = min(map(lambda x: x[1], successors))
+        better_succ = list(filter(lambda x: x[1] == min_conflict, successors))
+        
+        if len(better_succ) == 0:
+            break
+        else:
+            next_succ = random.choice(better_succ)
+            state.apply_action(next_succ[0], next_succ[1])
+
+    return state.is_final(), state
+
+def random_restart_hill_climbing(
+    initial: State,
+    max_restarts: int = 100, 
+    run_max_iters: int = 100, 
+) -> Result:
+    
+    total_iters, total_states = 0, 0
+    
+    # TODO 4. Realizăm maximum max_restarts căutări de tip Hill Climbing, din stări aleatoare.
+    # Prima dată pornim din starea initial. Pentru stările aleatoare noi, aveți dimensiunea 
+    # stării initial în initial.size, și folosiți un seed random
+    # Strângem în total_iters și total_states numărul de iterații și stări întors de HC.
+    state = initial.clone()
+    restarts = 0
+    
+    while restarts < max_restarts:
+        restarts += 1
+
+        is_final, final_state = stochastic_hill_climbing(state)
+
+        if is_final and final_state.conflicts() == 0:
+            return is_final, total_iters, total_states, final_state
+        
+    return state.is_final(), total_iters, total_states, state
+
 
 def hill_climbing(initial: State, max_iters: int = 1000) -> Result:
     iters, states = 0, 0
@@ -54,7 +106,9 @@ def hill_climbing_algorithm_function(filename: str, timetable_specs: dict):
                                              key=lambda x: (profi_materie(x[0], timetable_specs[utils.PROFESORI]), x[0])))
         
     # Aplică algoritmul Hill Climbing
-    result = hill_climbing(state_init)
+    # result = hill_climbing(state_init)
+
+    result = random_restart_hill_climbing(state_init)
 
     # Afișează rezultatul
     result[3].display()
