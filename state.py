@@ -2,6 +2,7 @@ from utils import pretty_print_timetable
 from check_constraints import parse_interval
 from ast import literal_eval
 from copy import deepcopy
+import json
 
 ##################### MACROURI #####################
 SLOTURI = 'Sloturi'
@@ -37,6 +38,34 @@ class State:
             if INTERVALE not in self.profesori[profesor]:
                 self.profesori[profesor][INTERVALE] = 0
 
+    def __hash__(self):
+        # return hash(json.dumps(self.orar, sort_keys=True))
+        # return hash(frozenset(self.orar.items()))
+
+        return hash(str(self.orar))
+
+        # if self.orar is None:
+        #     return hash(None)
+
+        # hash_result = 0
+        # for key, value in self.orar.items():
+        #     hash_result ^= hash(key)  # Adăugăm la hash cheia principală
+        #     for inner_key, inner_value in value.items():
+        #         hash_result ^= hash(inner_key)  # Adăugăm la hash cheia din interior
+        #         hash_result ^= hash(frozenset(inner_value.items()))  # Adăugăm la hash valorile
+        # return hash_result
+    
+    def __lt__(self, other):
+        # Defines the less than comparison logic
+        return self.conflicte < other.conflicte
+    
+    def __gt__(self, other):
+        # Defines the greater than comparison logic
+        return self.conflicte > other.conflicte
+    
+    def __eq__(self, other):
+        # Defines the equality logic
+        return self.conflicte == other.conflicte
 
     @staticmethod
     def generate_orar(zile: list[str],
@@ -64,11 +93,10 @@ class State:
         """
         return len(self.materii_ramase) == 0
     
-    def get_next_states(self):
+    def get_next_actions(self):
         '''
         Întoarce toate posibilele stări următoare.
         '''
-        next_states = []
         next_actions = []
         # parcurge toate intervalele orare goale și încearcă să le umple cu materiile rămase
         for zi in self.orar:
@@ -124,6 +152,60 @@ class State:
                                 next_actions.append((action, action_conflicts))
         # return next_states
         return next_actions
+    
+    def get_next_states(self):
+        '''
+        Întoarce toate posibilele stări următoare.
+        '''
+        next_states = []
+        next_actions = []
+        # parcurge toate intervalele orare goale și încearcă să le umple cu materiile rămase
+        for zi in self.orar:
+            for interval in self.orar[zi]:
+                for sala in self.orar[zi][interval]:
+                    if not self.orar[zi][interval][sala]:
+                        for materie in self.materii_ramase:
+                            # Verifică dacă materia poate fi ținută în sala respectivă
+                            if materie not in self.sali[sala][MATERII]:
+                                continue
+
+                            # Găsește profesor care să țină materia
+                            for profesor in self.profesori:
+                                if materie not in self.profesori[profesor][MATERII]:
+                                    continue
+
+                                # Verifică dacă profesorul mai poate preda
+                                if self.profesori[profesor][INTERVALE] == 7:
+                                    continue
+                                # Verifică dacă profesorul are slotul liber
+                                if zi in self.profesori[profesor][SLOTURI] and interval in self.profesori[profesor][SLOTURI][zi]:
+                                    continue
+
+                                #####################################
+                                # Crează stare vecină noua
+                                next_state = self.clone()
+                                next_state.orar[zi][interval][sala] = (profesor, materie)
+
+                                # Updatează orarul profesorului
+                                next_state.profesori[profesor][INTERVALE] += 1
+                                if zi not in next_state.profesori[profesor][SLOTURI]:
+                                    next_state.profesori[profesor][SLOTURI][zi] = []
+                                next_state.profesori[profesor][SLOTURI][zi].append(interval)
+
+                                # Calculează numărul de conflite soft încălcate
+                                next_state.conflicte = State.__compute_conflicts(orar=next_state.orar, profesori=next_state.profesori)
+
+                                # Updatează numărul de stundeți rămași cu materia respectivă
+                                next_state.materii_ramase[materie] -= self.sali[sala][CAPACITATE]
+
+                                # Elimină materia din lista celor rămase dacă a fost acoperită în totalitate
+                                if next_state.materii_ramase[materie] <= 0:
+                                    next_state.materii_ramase.pop(materie)
+                                #####################################
+                                
+                                # Adaugă starea vecină în lista de stări următoare
+                                next_states.append(next_state)
+        return next_states
     
     def apply_action(self, action: tuple[str, str, str, str, str], conflicts: int):
         '''

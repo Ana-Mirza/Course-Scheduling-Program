@@ -15,7 +15,7 @@ def stochastic_hill_climbing(initial: State, max_iters: int = 1000) -> tuple[boo
         print(" iter - ", iters)
         
         # Alegem aleator între vecinii mai buni decât starea curentă.
-        successors = state.get_next_states()
+        successors = state.get_next_actions()
         states += len(successors)
 
         if len(successors) == 0:
@@ -60,36 +60,6 @@ def random_restart_hill_climbing(
             end_state = final_state
         
     return end_state.is_final(), total_iters, total_states, end_state
-
-
-def hill_climbing(initial: State, max_iters: int = 1000) -> Result:
-    iters, states = 0, 0
-    state = initial.clone()
-    
-    while iters < max_iters:
-        iters += 1
-        print(iters)
-        print(state.materii_ramase)
-        
-        # Găsim cea mai bună stare vecină și, 
-        # dacă este mai bună decât cea curentă, continuăm din acea stare.
-        # Nu uitați să adunați numărul de stări construite.
-        successors = state.get_next_states()
-        successors = list(sorted(successors, key=lambda x: x.conflicts()))
-        print("conflicts - ", state.conflicts())
-
-        if not successors:
-            break
-
-        succ = successors[0]
-        states += len(successors)
-        
-        if succ.score() >= state.score():
-            break
-        else:
-            state = succ.clone()
-        
-    return state.is_final(), iters, states, state
 
 def profi_materie(materie, profesori) -> int:
     score = 0

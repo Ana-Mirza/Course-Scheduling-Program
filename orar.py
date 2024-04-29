@@ -13,16 +13,18 @@ def main(algorithm, input_file):
     if algorithm == "astar":
         # Apelați funcția pentru algoritmul A* și salvați rezultatul într-o variabilă
         result = astar_algorithm_function(input_file, timetable_specs)
+        result_state = result
     elif algorithm == "hc":
         # Apelați funcția pentru algoritmul Hill Climbing și salvați rezultatul într-o variabilă
         result = hill_climbing_algorithm_function(input_file, timetable_specs)
+        result_state = result[3]
     else:
         print("Algoritmul specificat nu este recunoscut.")
         return
     
     # Verificați rezultatul obținut
-    check_mandatory_constraints(result[3].orar, timetable_specs)
-    check_optional_constraints(result[3].orar, timetable_specs)
+    check_mandatory_constraints(result_state.orar, timetable_specs)
+    check_optional_constraints(result_state.orar, timetable_specs)
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
