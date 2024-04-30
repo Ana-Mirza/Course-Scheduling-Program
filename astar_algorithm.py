@@ -25,7 +25,7 @@ def astar(start, end, h):
         successors = current.get_next_states()
         print("numarul de vecini", len(successors))
         for neigh in successors:
-            g_cost = neigh.conflicts()
+            g_cost = neigh.conflicts() * 100
 
             if (neigh not in discovered) or (g_cost < discovered[neigh]):
                 if neigh in discovered:
@@ -64,8 +64,9 @@ def h(start: State , end: list[str]):
        return 0
    
 #    cost = profi_materie(list(start.materii_ramase.keys())[0], start.profesori)
-   cost = students_left(start.materii_ramase)
-#    cost = profi_materii(start.materii_ramase, start.profesori) / 1000
+#    cost = students_left(start.materii_ramase) / 1000
+   cost = profi_materii(start.materii_ramase, start.profesori) / 1000 
+   print(cost)
    return cost
 
 
