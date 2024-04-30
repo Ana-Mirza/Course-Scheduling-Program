@@ -6,23 +6,22 @@ from check_constraints import check_optional_constraints
 from utils import read_yaml_file
 
 def main(algorithm, input_file):
-    # Implementați logica pentru citirea și procesarea fișierului de intrare
-    # Apelați algoritmul corespunzător în funcție de argumentul algoritmului
+    # Procesarea fișierului de intrare
     timetable_specs = read_yaml_file(input_file)
 
     if algorithm == "astar":
-        # Apelați funcția pentru algoritmul A* și salvați rezultatul într-o variabilă
+        # Apelarea funcției pentru algoritmul A* și salvarea rezultatului într-o variabilă
         result = astar_algorithm_function(input_file, timetable_specs)
         result_state = result
     elif algorithm == "hc":
-        # Apelați funcția pentru algoritmul Hill Climbing și salvați rezultatul într-o variabilă
+        # Apelarea funcției pentru algoritmul Hill Climbing și salvarea rezultatului într-o variabilă
         result = hill_climbing_algorithm_function(input_file, timetable_specs)
         result_state = result[3]
     else:
         print("Algoritmul specificat nu este recunoscut.")
         return
     
-    # Verificați rezultatul obținut
+    # Verificăm rezultatul obținut
     check_mandatory_constraints(result_state.orar, timetable_specs)
     check_optional_constraints(result_state.orar, timetable_specs)
 

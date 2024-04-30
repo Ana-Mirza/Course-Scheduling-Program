@@ -39,21 +39,7 @@ class State:
                 self.profesori[profesor][INTERVALE] = 0
 
     def __hash__(self):
-        # return hash(json.dumps(self.orar, sort_keys=True))
-        # return hash(frozenset(self.orar.items()))
-
         return hash(str(self.orar))
-
-        # if self.orar is None:
-        #     return hash(None)
-
-        # hash_result = 0
-        # for key, value in self.orar.items():
-        #     hash_result ^= hash(key)  # Adăugăm la hash cheia principală
-        #     for inner_key, inner_value in value.items():
-        #         hash_result ^= hash(inner_key)  # Adăugăm la hash cheia din interior
-        #         hash_result ^= hash(frozenset(inner_value.items()))  # Adăugăm la hash valorile
-        # return hash_result
 
     def students_left(self, materii) -> int:
         students = 0
@@ -63,18 +49,15 @@ class State:
         return students
     
     def __lt__(self, other):
-        # Defines the less than comparison logic
-        # return len(self.materii_ramase) < len(other.materii_ramase)
+        # Logica pentru compararea a două stări
         return self.students_left(self.materii_ramase) < self.students_left(other.materii_ramase)
     
     def __gt__(self, other):
-        # Defines the greater than comparison logic
-        # return len(self.materii_ramase) > len(other.materii_ramase)
+        # Logica pentru compararea a două stări
         return self.students_left(self.materii_ramase) > self.students_left(other.materii_ramase)
     
     def __eq__(self, other):
-        # Defines the equality logic
-        # return self.conflicte == other.conflicte
+        # Logica pentru compararea a două stări
         return self.students_left(self.materii_ramase) == self.students_left(other.materii_ramase)
 
     @staticmethod
@@ -130,37 +113,11 @@ class State:
                                 if zi in self.profesori[profesor][SLOTURI] and interval in self.profesori[profesor][SLOTURI][zi]:
                                     continue
 
-                                #####################################
-                                # Crează stare vecină noua
-                                next_state = self.clone()
-                                next_state.orar[zi][interval][sala] = (profesor, materie)
-
-                                # Updatează orarul profesorului
-                                next_state.profesori[profesor][INTERVALE] += 1
-                                if zi not in next_state.profesori[profesor][SLOTURI]:
-                                    next_state.profesori[profesor][SLOTURI][zi] = []
-                                next_state.profesori[profesor][SLOTURI][zi].append(interval)
-
-                                # Calculează numărul de conflite soft încălcate
-                                next_state.conflicte = State.__compute_conflicts(orar=next_state.orar, profesori=next_state.profesori)
-
-                                # Updatează numărul de stundeți rămași cu materia respectivă
-                                next_state.materii_ramase[materie] -= self.sali[sala][CAPACITATE]
-
-                                # Elimină materia din lista celor rămase dacă a fost acoperită în totalitate
-                                if next_state.materii_ramase[materie] <= 0:
-                                    next_state.materii_ramase.pop(materie)
-                                #####################################
-                                
-                                # Adaugă starea vecină în lista de stări următoare
-                                # next_states.append(next_state)
-
                                 # Crează listă de acțiuni posibile
                                 action = (zi, interval, sala, profesor, materie)
                                 action_conflicts = State.__compute_conflicts2(action, self.profesori[profesor][CONSTRANGERI])
                                 
                                 next_actions.append((action, action_conflicts))
-        # return next_states
         return next_actions
     
     def get_next_states(self):

@@ -3,44 +3,90 @@ import check_constraints
 from heapq import heappop, heappush
 from state import State
 
-def astar(start, end, h):
+# Implementarea algoritmului A* cu IDA*
+def astar_ida(start, end, h, h_max):
     # Frontiera, ca listă (heap) de tupluri (cost_f, nod)
     frontier = []
     heappush(frontier, (0 + h(start, end), start))
     
-    # Nodurile descoperite ca dicționar nod -> (părinte, cost_g-până-la-nod)
+    # Nodurile descoperite ca dicționar nod -> cost_g-până-la-nod
     discovered = {start: 0}
 
     # Implementăm algoritmul A*
     while frontier:
-        # TODO
         _, current = heappop(frontier)
-        print("frontier size", len(frontier))
-        print("current", current.materii_ramase)
-        # current.display()
 
         if current.is_final():
           break
 
         # explore neighbors
         successors = current.get_next_states()
-        print("numarul de vecini", len(successors))
-        for neigh in successors:
-            g_cost = neigh.conflicts() * 100
+        filtered_succ = list(filter(lambda x: g(x, start) + h(x, end) < h_max, successors))
+        eliminated_succ = list(filter(lambda x: g(x, start) + h(x, end) >= h_max, successors))
+
+        # Calculăm f-ul maxim următor dintre vecinii eliminați
+        if len(eliminated_succ) > 0:
+            min_f = min(map(lambda x: g(x, start) + h(x, end), eliminated_succ))      
+        else:
+            min_f = h_max      
+
+        # Explorăm vecinii care au f-ul mai mic decât f_max
+        for neigh in filtered_succ:
+            g_cost = g(neigh, start)
 
             if (neigh not in discovered) or (g_cost < discovered[neigh]):
-                if neigh in discovered:
-                    print("discovered with g_cost", discovered[neigh])
-                    print("current g_cost", g_cost)
                 discovered[neigh] = g_cost
-            #   print("g_cost", g_cost)
-            #   print("h_cost", h(neigh, end))
+                heappush(frontier, (g_cost + h(neigh, end), neigh))
+
+    return current, len(discovered.keys()), min_f # starea finala și numărul de stări descoperite
+
+# Implementarea algoritmului IDA*
+def ida(start, end, h):
+    f_max = h(start, end)
+
+    while True:
+        result, num_states, f_max = astar_ida(start, end, h, f_max)
+        if result.is_final():
+            return result, num_states
+
+
+# Implementarea algoritmului Memory Bounded A*
+def memory_bound_astar(start, end, h):
+    # Frontiera, ca listă (heap) de tupluri (cost_f, nod)
+    frontier = []
+    heappush(frontier, (0 + h(start, end), start))
+    
+    # Nodurile descoperite ca dicționar nod -> cost_g-până-la-nod
+    discovered = {start: 0}
+
+    # Implementăm algoritmul A*
+    while frontier:
+        _, current = heappop(frontier)
+
+        if current.is_final():
+          break
+
+        # Verificăm dacă mai avem memorie -- limita este de 200000 de stări
+        if len(frontier) > 200000:
+            continue
+
+        # Explorăm vecinii
+        successors = current.get_next_states()
+
+        # Sortăm vecinii după costul g și alegem primii 100 (memory bounded A*)
+        sorted_succ = sorted(successors, key=lambda x: g(x, start))
+
+        for neigh in sorted_succ[:100]:
+            g_cost = g(neigh, start)
+
+            if (neigh not in discovered) or (g_cost < discovered[neigh]):
+                discovered[neigh] = g_cost
                 heappush(frontier, (g_cost + h(neigh, end), neigh))
 
     return current, len(discovered.keys()) # starea finala și numărul de stări descoperite
 
 
-# Euristic function
+# Funcție ce calculează numărul de profesori disponibili pentru o materie
 def profi_materii(materii_ramase, profesori) -> int:
     score = 0
 
@@ -53,6 +99,7 @@ def profi_materii(materii_ramase, profesori) -> int:
 
     return score
 
+# Funcție ce calculează numărul de studenți rămași de alocat
 def students_left(materii) -> int:
     students = 0
     for materie in materii:
@@ -60,15 +107,24 @@ def students_left(materii) -> int:
 
     return students
 
+# Funcție euristică pentru A* și IDA*
 def h(start: State , end: list[str]):
    if len(start.materii_ramase) == len(end):
        return 0
    
-#    cost = profi_materie(list(start.materii_ramase.keys())[0], start.profesori)
-   cost = students_left(start.materii_ramase) / 10
-   cost += profi_materii(start.materii_ramase, start.profesori) / 1000
-   print(cost)
+   # ponderi pentru costul euristicii
+   w_students = 0.1
+   w_profi = 0.001
+   
+   cost = w_students * students_left(start.materii_ramase) + w_profi * profi_materii(start.materii_ramase, start.profesori)
    return cost
+
+# Funcție de cost pentru A* și IDA*
+def g(current: State, start: State):
+    # pondere pentru costul g
+    w = h(start, []) + 1
+
+    return current.conflicts() * w
 
 
 def astar_algorithm_function(filename: str, timetable_specs: dict):
@@ -79,9 +135,31 @@ def astar_algorithm_function(filename: str, timetable_specs: dict):
                        zile=timetable_specs[utils.ZILE],
                        intervale=timetable_specs[utils.INTERVALE])
     
-    result_state, num_state = astar(state_init, [], h)
+    # Memory Bound A*
+    # result_state, num_state = memory_bound_astar(state_init, [], h)
+
+    # Scriem rezultatul în fișierul de ieșire
+    # filename = filename.split('.')[0] + '.txt'
+    # filename = 'mbastar_outputs/' + filename.split('/')[-1]
+    # with open(filename, 'w') as f:
+    #     f.write(utils.pretty_print_timetable(result_state.orar, result_state.filename))
+    #     f.write("Numarul de stari: " + str(num_state) + "\n")
+    #     f.write("Cost: " + str(result_state.conflicts()))
+
+    # IDA*
+    result_state, num_state = ida(state_init, [], h)
+
+    # Scriem rezultatul în fișierul de ieșire
+    # filename = filename.split('.')[0] + '.txt'
+    # filename = 'astar_outputs/' + filename.split('/')[-1]
+    # with open(filename, 'w') as f:
+    #     f.write(utils.pretty_print_timetable(result_state.orar, result_state.filename))
+    #     f.write("Numarul de stari: " + str(num_state) + "\n")
+    #     f.write("Cost: " + str(result_state.conflicts()))
+
+    # Printăm rezultatul în consolă
     result_state.display()
-    print("Numarul de stari: ", num_state)
-    print("Stare finala: ", result_state.is_final())
+    print("Numarul de stari: " + str(num_state))
+    print("Cost: " + str(result_state.conflicts()))
 
     return result_state
