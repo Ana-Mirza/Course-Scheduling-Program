@@ -1,8 +1,8 @@
 import utils
 import random
 from state import State
-from utils import pretty_print_timetable
-from check_constraints import check_mandatory_constraints
+
+from time import time
 
 Result = tuple[bool, int, int, State]
 
@@ -74,21 +74,24 @@ def hill_climbing_algorithm_function(filename: str, timetable_specs: dict):
                        intervale=timetable_specs[utils.INTERVALE])
 
     # Aplică algoritmul Random Restart Hill Climbing
+    start_time = time()
     result = random_restart_hill_climbing(state_init)
+    end_time = time()
 
     # Scriem rezultatul în fișier
-    # filename = filename.split('.')[0] + '.txt'
-    # filename = 'hc_outputs/' + filename.split('/')[-1]
-    # with open(filename, 'w') as f:
-    #     f.write(pretty_print_timetable(result[3].orar, result[3].filename))
-    #     f.write("Numarul de stari: " + str(result[2]) + "\n")
-    #     f.write("Numarul de restarts: " + str(result[1]) + "\n")
-    #     f.write("Cost: " + str(result[3].conflicts()))
+    filename = filename.split('.')[0] + '.txt'
+    filename = 'hc_outputs/' + filename.split('/')[-1]
+    with open(filename, 'w') as f:
+        f.write(pretty_print_timetable(result[3].orar, result[3].filename))
+        f.write("Numarul de stari: " + str(result[2]) + "\n")
+        f.write("Numarul de restarts: " + str(result[1]) + "\n")
+        f.write("Cost: " + str(result[3].conflicts()))
 
     # Printăm rezultatul în consolă
     result[3].display()
     print("Numarul de stari: " + str(result[2]))
     print("Numarul de restarts: " + str(result[1]))
     print("Cost: " + str(result[3].conflicts()))
+    print("Timp de rulare: " + str(end_time - start_time) + " sec")
 
     return result

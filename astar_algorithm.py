@@ -3,6 +3,8 @@ import check_constraints
 from heapq import heappop, heappush
 from state import State
 
+from time import time
+
 # Implementarea algoritmului A* cu IDA*
 def astar_ida(start, end, h, h_max):
     # Frontiera, ca listă (heap) de tupluri (cost_f, nod)
@@ -11,6 +13,7 @@ def astar_ida(start, end, h, h_max):
     
     # Nodurile descoperite ca dicționar nod -> cost_g-până-la-nod
     discovered = {start: 0}
+    states = 0
 
     # Implementăm algoritmul A*
     while frontier:
@@ -21,6 +24,7 @@ def astar_ida(start, end, h, h_max):
 
         # explore neighbors
         successors = current.get_next_states()
+        states += len(successors)
         filtered_succ = list(filter(lambda x: g(x, start) + h(x, end) < h_max, successors))
         eliminated_succ = list(filter(lambda x: g(x, start) + h(x, end) >= h_max, successors))
 
@@ -38,16 +42,16 @@ def astar_ida(start, end, h, h_max):
                 discovered[neigh] = g_cost
                 heappush(frontier, (g_cost + h(neigh, end), neigh))
 
-    return current, len(discovered.keys()), min_f # starea finala și numărul de stări descoperite
+    return current, states, len(discovered.keys()), min_f # starea finala și numărul de stări descoperite
 
 # Implementarea algoritmului IDA*
 def ida(start, end, h):
     f_max = h(start, end)
 
     while True:
-        result, num_states, f_max = astar_ida(start, end, h, f_max)
+        result, num_states, explored_states, f_max = astar_ida(start, end, h, f_max)
         if result.is_final():
-            return result, num_states
+            return result, num_states, explored_states
 
 
 # Implementarea algoritmului Memory Bounded A*
@@ -58,6 +62,7 @@ def memory_bound_astar(start, end, h):
     
     # Nodurile descoperite ca dicționar nod -> cost_g-până-la-nod
     discovered = {start: 0}
+    states = 0
 
     # Implementăm algoritmul A*
     while frontier:
@@ -72,6 +77,7 @@ def memory_bound_astar(start, end, h):
 
         # Explorăm vecinii
         successors = current.get_next_states()
+        states += len(successors)
 
         # Sortăm vecinii după costul g și alegem primii 100 (memory bounded A*)
         sorted_succ = sorted(successors, key=lambda x: g(x, start))
@@ -83,7 +89,7 @@ def memory_bound_astar(start, end, h):
                 discovered[neigh] = g_cost
                 heappush(frontier, (g_cost + h(neigh, end), neigh))
 
-    return current, len(discovered.keys()) # starea finala și numărul de stări descoperite
+    return current, states, len(discovered.keys()) # starea finala și numărul de stări descoperite
 
 
 # Funcție ce calculează numărul de profesori disponibili pentru o materie
@@ -136,7 +142,9 @@ def astar_algorithm_function(filename: str, timetable_specs: dict):
                        intervale=timetable_specs[utils.INTERVALE])
     
     # Memory Bound A*
-    # result_state, num_state = memory_bound_astar(state_init, [], h)
+    # start_time = time()
+    # result_state, num_state, explored_states = memory_bound_astar(state_init, [], h)
+    # end_time = time()
 
     # Scriem rezultatul în fișierul de ieșire
     # filename = filename.split('.')[0] + '.txt'
@@ -147,19 +155,23 @@ def astar_algorithm_function(filename: str, timetable_specs: dict):
     #     f.write("Cost: " + str(result_state.conflicts()))
 
     # IDA*
-    result_state, num_state = ida(state_init, [], h)
+    start_time = time()
+    result_state, num_state, explored_states = ida(state_init, [], h)
+    end_time = time()
 
     # Scriem rezultatul în fișierul de ieșire
-    # filename = filename.split('.')[0] + '.txt'
-    # filename = 'astar_outputs/' + filename.split('/')[-1]
-    # with open(filename, 'w') as f:
-    #     f.write(utils.pretty_print_timetable(result_state.orar, result_state.filename))
-    #     f.write("Numarul de stari: " + str(num_state) + "\n")
-    #     f.write("Cost: " + str(result_state.conflicts()))
+    filename = filename.split('.')[0] + '.txt'
+    filename = 'astar_outputs/' + filename.split('/')[-1]
+    with open(filename, 'w') as f:
+        f.write(utils.pretty_print_timetable(result_state.orar, result_state.filename))
+        f.write("Numarul de stari: " + str(num_state) + "\n")
+        f.write("Cost: " + str(result_state.conflicts()))
 
     # Printăm rezultatul în consolă
     result_state.display()
-    print("Numarul de stari: " + str(num_state))
+    print("Numarul de stari construite: " + str(num_state))
+    print("Numarul de stari explorate: " + str(explored_states))
     print("Cost: " + str(result_state.conflicts()))
+    print("Timp de rulare: " + str(end_time - start_time) + " sec")
 
     return result_state
