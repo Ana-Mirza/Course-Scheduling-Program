@@ -56,7 +56,6 @@ def random_restart_hill_climbing(
         
         print("conflicts - ", final_state.conflicts())
         if (final_state.conflicts() <= end_state.conflicts() or end_state == state) and is_final:
-            print("da")
             end_state = final_state
         
     return end_state.is_final(), total_iters, total_states, end_state

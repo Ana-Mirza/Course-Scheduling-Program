@@ -17,6 +17,7 @@ def astar(start, end, h):
         _, current = heappop(frontier)
         print("frontier size", len(frontier))
         print("current", current.materii_ramase)
+        # current.display()
 
         if current.is_final():
           break
@@ -64,8 +65,8 @@ def h(start: State , end: list[str]):
        return 0
    
 #    cost = profi_materie(list(start.materii_ramase.keys())[0], start.profesori)
-#    cost = students_left(start.materii_ramase) / 1000
-   cost = profi_materii(start.materii_ramase, start.profesori) / 1000 
+   cost = students_left(start.materii_ramase) / 10
+   cost += profi_materii(start.materii_ramase, start.profesori) / 1000
    print(cost)
    return cost
 

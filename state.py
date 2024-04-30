@@ -54,18 +54,28 @@ class State:
         #         hash_result ^= hash(inner_key)  # Adăugăm la hash cheia din interior
         #         hash_result ^= hash(frozenset(inner_value.items()))  # Adăugăm la hash valorile
         # return hash_result
+
+    def students_left(self, materii) -> int:
+        students = 0
+        for materie in materii:
+            students += materii[materie]
+
+        return students
     
     def __lt__(self, other):
         # Defines the less than comparison logic
-        return self.conflicte < other.conflicte
+        # return len(self.materii_ramase) < len(other.materii_ramase)
+        return self.students_left(self.materii_ramase) < self.students_left(other.materii_ramase)
     
     def __gt__(self, other):
         # Defines the greater than comparison logic
-        return self.conflicte > other.conflicte
+        # return len(self.materii_ramase) > len(other.materii_ramase)
+        return self.students_left(self.materii_ramase) > self.students_left(other.materii_ramase)
     
     def __eq__(self, other):
         # Defines the equality logic
-        return self.conflicte == other.conflicte
+        # return self.conflicte == other.conflicte
+        return self.students_left(self.materii_ramase) == self.students_left(other.materii_ramase)
 
     @staticmethod
     def generate_orar(zile: list[str],
